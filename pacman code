@@ -1,0 +1,315 @@
+#include <SFML/Graphics.hpp>
+#include <time.h>
+
+using namespace sf;
+
+const int H = 21; //высота карты
+const int W = 19; //ширина карты
+const int TS = 25; //размер текстур
+
+int q = 0; //колво собранных очков
+bool life = true; //жизнь
+
+/*
+ A - стенки
+ B - пустота
+ C - пакман
+ пустые ячейки - очки
+ */
+
+String TileMap[H] =
+{
+    "AAAAAAAAAAAAAAAAAAA",
+    "A1       A       2A",
+    "A AA AAA A AAA AA A",
+    "A        A        A",
+    "A AA A AAAAA A AA A",
+    "A    A   A   A    A",
+    "AAAA AAA A AAA AAAA",
+    "BBBA A       A ABBB",
+    "AAAA A AAAAA A AAAA",
+    "BBBB   ABBBA   BBBB",
+    "AAAA A AAAAA A AAAA",
+    "BBBA A       A ABBB",
+    "AAAA A AAAAA A AAAA",
+    "A        A        A",
+    "A AA AAA A AAA AA A",
+    "A  A     C     A  A",
+    "AA A A AAAAA A A AA",
+    "A    A   A   A    A",
+    "A AAAAAA A AAAAAA A",
+    "A3               4A",
+    "AAAAAAAAAAAAAAAAAAA",
+};
+
+//пакман
+class Pacman
+{
+public:
+    float frame = 0;
+    int x = 9;
+    int y = 15; //координаты появления
+    int new_x = 0;
+    int new_y = 0; //координаты движения
+    int rotate = 1; //вращение пакмена 1 вправо 2 влево 3 вверх 4 вниз
+    int dl = 0; //задержка
+
+    void update()
+    { //функция для обновления текстурки пакмена
+        frame += 0.01;
+        if (frame > 5)
+            frame -= 5;
+
+        dl++;
+        if (dl >= 400) //задержка
+        {
+            switch (rotate) //меняем направление движения
+            {
+            case 1:
+                if (TileMap[y][new_x + 1] != 'A')
+                    new_x += 1;
+                break;
+            case 2:
+                if (TileMap[y][new_x - 1] != 'A')
+                    new_x -= 1;
+                break;
+            case 3:
+                if (TileMap[new_y - 1][x] != 'A')
+                    new_y -= 1;
+                break;
+            case 4:
+                if (TileMap[new_y + 1][x] != 'A')
+                    new_y += 1;
+                break;
+            }
+
+            dl = 0;
+        }
+
+        if (TileMap[new_y][new_x] == ' ' || TileMap[new_y][new_x] == 'B') //если ходим по пустоте и сьедаем очки, то рисуем пустоту и двигаем дальше
+        {
+            if (TileMap[new_y][new_x] == ' ') //проходя и сьедая точку колво очков увеличивается
+                q++;
+            
+            if (TileMap[new_y][new_x] == '1'
+             || TileMap[new_y][new_x] == '2'
+             || TileMap[new_y][new_x] == '3'
+             || TileMap[new_y][new_x] == '4')
+                life = false; //если координаты совпадают с призраком то проигрыш
+
+            TileMap[y][x] = 'B';
+
+            TileMap[new_y][new_x] = 'C'; //двигаем дальше
+
+            x = new_x;
+            y = new_y;
+        }
+
+        
+        
+        
+        
+         if (new_y == 9 && (new_x == 0 || new_x == 19)) //тп с правой на левую или наоборот(дорожки)
+        {
+            if (new_x == 0)
+                new_x = 17;
+            else
+                new_x = 1;
+
+            TileMap[y][x] = 'B';
+            TileMap[new_y][new_x] = 'C';
+
+            x = new_x;
+            y = new_y;
+        }
+    }
+};
+//призрак
+class Ghost
+{
+public:
+    int x[4] = { 1, 17 , 1, 17 }; //массив с координатами появления призраков
+    int y[4] = { 1, 1, 19, 19 };
+    int new_x[4] = { 0 , 0 , 0, 0 };
+    int new_y[4] = { 0, 0, 0, 0 };
+    int rotate[4] = { 1, 1, 1, 1 };
+    int dl = 0;
+
+    void update()
+    {
+        dl ++;
+        if (dl >= 500)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                rotate[i] = rand() % 4 + 1; //рандомное движение призрака
+
+                new_x[i] = x[i];
+                new_y[i] = y[i];
+
+                switch (rotate[i])
+                {
+                case 1:
+                    if (TileMap[y[i]][new_x[i] + 1] != 'A')
+                        new_x[i] += 1;
+                    break;
+                case 2:
+                    if (TileMap[y[i]][new_x[i] - 1] != 'A')
+                        new_x[i] -= 1;
+                    break;
+                case 3:
+                    if (TileMap[new_y[i] - 1][x[i]] != 'A')
+                        new_y[i] -= 1;
+                    break;
+                case 4:
+                    if (TileMap[new_y[i] + 1][x[i]] != 'A')
+                        new_y[i] += 1;
+                    break;
+                }
+            }
+            dl = 0;
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            if (TileMap[new_y[i]][new_x[i]] == ' '
+             || TileMap[new_y[i]][new_x[i]] == 'B'
+             || TileMap[new_y[i]][new_x[i]] == 'C') //делаем так, чтобы призраки проходили через игрока
+            {
+                if (TileMap[new_y[i]][new_x[i]] == 'B')
+                    TileMap[y[i]][x[i]] = 'B';
+                else if (TileMap[new_y[i]][new_x[i]] == ' ')
+                    TileMap[y[i]][x[i]] = ' ';
+                else if (TileMap[new_y[i]][new_x[i]] == 'C')
+                    life = false; //проигрываем
+
+                if (i == 0)
+                    TileMap[new_y[i]][new_x[i]] = '1';
+                if (i == 1)
+                    TileMap[new_y[i]][new_x[i]] = '2';
+                if (i == 2)
+                    TileMap[new_y[i]][new_x[i]] = '3';
+                if (i == 3)
+                    TileMap[new_y[i]][new_x[i]] = '4';
+
+                x[i] = new_x[i];
+                y[i] = new_y[i];
+            }
+
+            if (new_y[i] == 9 && (new_x[i] == 0 || new_x[i] == 18))
+            {
+                if (new_x[i] == 0)
+                    new_x[i] = 17;
+                else
+                    new_x[i] = 1;
+
+                TileMap[y[i]][x[i]] = 'B';
+                
+                if (i == 0)
+                    TileMap[new_y[i]][new_x[i]] = '1';
+                if (i == 1)
+                    TileMap[new_y[i]][new_x[i]] = '2';
+                if (i == 2)
+                    TileMap[new_y[i]][new_x[i]] = '3';
+                if (i == 3)
+                    TileMap[new_y[i]][new_x[i]] = '4';
+
+                x[i] = new_x[i];
+                y[i] = new_y[i];
+            }
+        }
+    }
+};
+
+int main() {
+    srand(time(0));
+    RenderWindow window(VideoMode(W * TS, H * TS), "PACMAN");
+
+    //загрузка текстур
+    
+    Texture T;
+    T.loadFromFile("/Users/adyl/Pictures/title.png");
+    Sprite plat(T);
+
+    Texture YW;
+    YW.loadFromFile("/Users/adyl/Pictures/youwin.png");
+    Sprite youwin(YW);
+    youwin.setPosition(100, 210);
+
+    Texture YL;
+    YL.loadFromFile("/Users/adyl/Pictures/youlose.png");
+    Sprite youlose(YL);
+    youlose.setPosition(100, 210);
+
+    Pacman PM; //используем классы
+    Ghost GH;
+
+    while (window.isOpen())
+    {
+        Event event;
+        while (window.pollEvent(event))
+        {
+            if (event.type == Event::Closed)
+                window.close();
+
+            if (q < 171 && life)
+                if (event.type == Event::KeyPressed)
+                {
+                    PM.new_x = PM.x;
+                    PM.new_y = PM.y;
+                    //меняем направление пакмена с помощью клавы
+                    if (event.key.code == Keyboard::Right)
+                        PM.rotate = 1;
+                    if (event.key.code == Keyboard::Left)
+                        PM.rotate = 2;
+                    if (event.key.code == Keyboard::Up)
+                        PM.rotate = 3;
+                    if (event.key.code == Keyboard::Down)
+                        PM.rotate = 4;
+                }
+        }
+
+        if (q < 171 && life) //тормозит игру при победе и поражении
+        {
+            PM.update();
+            GH.update();
+        }
+        
+        window.clear(Color::Black); //окошко вывода
+
+        for (int i = 0; i < H; i++) //прорисовываем карту
+            for (int j = 0; j < W; j++)
+            {
+                if (TileMap[i][j] == 'A')
+                    plat.setTextureRect(IntRect(0, 0, TS, TS)); //стенка
+                if (TileMap[i][j] == 'C')
+                    plat.setTextureRect(IntRect(TS * int(PM.frame), TS * PM.rotate, TS, TS));// пакман (кадры и вращением)
+                if (TileMap[i][j] == ' ')
+                    plat.setTextureRect(IntRect(TS, 0, TS, TS)); //место без текстур (для очков)
+                //призраки
+                if (TileMap[i][j] == '1')
+                    plat.setTextureRect(IntRect(TS * 5, TS * GH.rotate[0], TS, TS));
+                if (TileMap[i][j] == '2')
+                    plat.setTextureRect(IntRect(TS * 5, TS * GH.rotate[1], TS, TS));
+                if (TileMap[i][j] == '3')
+                    plat.setTextureRect(IntRect(TS * 5, TS * GH.rotate[2], TS, TS));
+                if (TileMap[i][j] == '4')
+                    plat.setTextureRect(IntRect(TS * 5, TS * GH.rotate[3], TS, TS));
+                
+                if (TileMap[i][j] == 'B') //скип
+                    continue;
+
+                plat.setPosition(j * TS, i * TS);
+                window.draw(plat); //выводим результат
+            }
+
+        if (q == 171)
+            window.draw(youwin); //вывод победы
+        if (!life)
+            window.draw(youlose); //вывод проигрыша
+
+        window.display();
+    }
+
+    return 0;
+}
